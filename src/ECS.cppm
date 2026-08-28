@@ -1,23 +1,27 @@
 module;
 
-#include "entt/entt.hpp"
-#include "external/glad/glad.h"
+#include <bitset>
 
-#include "external/glm/glm.hpp"
-#include "external/glm/gtc/type_ptr.hpp"
+#include "entt/entt.hpp"
 
 export module ECS;
 
-import Meshes;
-import Materials;
 import Components;
-import Concepts;
-import Shaders;
 
+/**
+ * \brief ECS that provides functions to create entities with a component or
+ * add a component to an existing entity
+ *
+ * Bitmasks are added or updated for every component added to make jobs,
+ * like rendering, more efficient. Any other system of the game engine is
+ * kept separate from the ECS to allow for different renderers,physics
+ * engines, etc...
+ */
 export class ECS {
 public:
   ECS() = default;
 
+  // ECS should not be moved
   ECS(ECS &&other) = delete;
   ECS &operator=(ECS &&other) = delete;
 
@@ -25,15 +29,15 @@ public:
 
   // add entity with components
   template <typename T, typename... Args>
-  const entt::entity m_add_entity_with_component(Args... args);
+  const entt::entity m_add_entity_with_component(Args &&...args);
 
   // add component to existing entity
   template <typename T, typename... Args>
-  void m_add_component_to_entity(entt::entity entity, Args... args);
+  void m_add_component_to_entity(entt::entity entity, Args &&...args);
 
   // update component of existing entity
   template <typename T, typename... Args>
-  void m_update_entity_component(entt::entity entity, Args... args);
+  void m_update_entity_component(entt::entity entity, Args &&...args);
 
   // update entities
   void m_update();
@@ -42,40 +46,39 @@ public:
 
 private:
   entt::registry m_reg;
-
-  // update materials
-  void m_update_materials(entt::entity entity);
-
-  // update transforms
-  void m_update_transforms(entt::entity entity);
-
-  // initialization
-  void m_init();
-
-  // draw
-  void m_draw();
 };
 
 void ECS::m_update() {}
 
 // add entity with component
 template <typename T, typename... Args>
-const entt::entity ECS::m_add_entity_with_component(Args... args) {
+const entt::entity ECS::m_add_entity_with_component(Args &&...args) {
   const entt::entity entity = m_reg.create();
-  m_reg.emplace<T>(entity, args...);
+  m_reg.emplace<T>(entity, std::forward<Args>(args)...);
+
+  std::bitset<static_cast<size_t>(ComponentTypes::BIT_COUNT)> new_bitset{};
+  new_bitset.set(ComponentID_v<T>);
+  m_reg.emplace<ComponentMask>(entity, new_bitset);
+
   return entity;
 }
 
 // add component to existing entity
 template <typename T, typename... Args>
-void ECS::m_add_component_to_entity(entt::entity entity, Args... args) {
-  m_reg.emplace<T>(entity, args...);
+void ECS::m_add_component_to_entity(entt::entity entity, Args &&...args) {
+  m_reg.emplace<T>(entity, std::forward<Args>(args)...);
+
+  ComponentMask &bitmask = m_reg.get<ComponentMask>(entity);
+  bitmask.m_bits.set(ComponentID_v<T>);
 }
 
 // update component of existing entity
 template <typename T, typename... Args>
-void ECS::m_update_entity_component(entt::entity entity, Args... args) {
-  m_reg.replace<T>(entity, args...);
+void ECS::m_update_entity_component(entt::entity entity, Args &&...args) {
+  m_reg.replace<T>(entity, std::forward<Args>(args)...);
+
+  ComponentMask &bitmask = m_reg.get<ComponentMask>(entity);
+  bitmask.m_bits.set(ComponentID_v<T>);
 }
 
 entt::registry &ECS::m_get_registry() { return m_reg; }

@@ -10,6 +10,9 @@ module;
 
 export module Window;
 
+/**
+ * \brief creates a window from given parameters
+*/
 export class Window {
 public:
   Window(int width, int height, const char *title, GLFWmonitor *monitor,
@@ -24,10 +27,15 @@ private:
   GLFWwindow *m_window = nullptr;
   float m_aspect_ratio;
 
+  /**
+   * \brief resizes the opengl viewport when the window size changes
+  */
   friend void resize_callback(GLFWwindow *window, int width, int height);
 };
 
-// debug callback
+/**
+ * \brief debugging is enabled when NDEBUG is not set
+*/
 void debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity,
                     GLsizei length, const GLchar *message,
                     const void *userParam) {
@@ -50,7 +58,10 @@ void resize_callback(GLFWwindow *window, int width, int height) {
       static_cast<float>(width) / static_cast<float>(height);
 }
 
-// create window and its context
+/**
+ * \brief creates GLFW window and its associated opengl context
+ *, sets callbacks
+*/
 Window::Window(int width, int height, const char *title, GLFWmonitor *monitor,
                GLFWwindow *share) {
   m_window = glfwCreateWindow(width, height, title, monitor, share);
@@ -64,12 +75,7 @@ Window::Window(int width, int height, const char *title, GLFWmonitor *monitor,
 
   glfwMakeContextCurrent(m_window);
 
-  static bool glad_loaded = false;
-
-  if (!glad_loaded) {
-    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-    glad_loaded = true;
-  }
+  gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
   glViewport(0, 0, width, height);
 
