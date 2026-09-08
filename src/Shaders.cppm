@@ -11,8 +11,9 @@ module;
 export module Shaders;
 
 /**
- * \brief takes shader strings as input, creates shaders, compiles shaders, checks for errors, returns their ids
-*/
+ * \brief takes shader strings as input, creates shaders, compiles shaders,
+ * checks for errors, returns their ids
+ */
 export std::vector<GLuint> generate_ids(std::vector<std::string> &vert_shaders,
                                         std::vector<std::string> &frag_shaders,
                                         const size_t num_groups) {
@@ -80,6 +81,7 @@ export std::vector<GLuint> generate_ids(std::vector<std::string> &vert_shaders,
       glGetProgramInfoLog(program, program_log_length, NULL, program_log);
 
       std::cerr << program_log;
+      std::exit(-1);
     }
 
     ids.push_back(program);
@@ -89,8 +91,9 @@ export std::vector<GLuint> generate_ids(std::vector<std::string> &vert_shaders,
 }
 
 /**
- * \brief describes per-vertex attribute for a vao and binds it to specified binding index
-*/
+ * \brief describes per-vertex attribute for a vao and binds it to specified
+ * binding index
+ */
 export void set_attrib(GLuint vao, GLuint attrib_index, GLuint binding_index,
                        GLint size, GLenum type, GLboolean normalized,
                        GLuint relative_offset, GLbitfield flags) {

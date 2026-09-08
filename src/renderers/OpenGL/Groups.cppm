@@ -15,11 +15,27 @@ export struct Group {
   size_t m_id;
   size_t m_num_vbos;
   std::bitset<static_cast<size_t>(ComponentTypes::BIT_COUNT)> m_components;
+  size_t m_num_entities;
+
+  // constructor because its not an aggregate anymore
+  Group(size_t id, size_t num_vbos,
+        std::bitset<static_cast<size_t>(ComponentTypes::BIT_COUNT)> components)
+      : m_id(id), m_num_vbos(num_vbos), m_components(components),
+        m_num_entities(1) {}
+
+  Group(const Group &other) = default;
+  Group &operator=(const Group &other) = default;
+
+  // need to make these noexcept so that they can be moved with vectors
+  Group(Group &&other) noexcept = default;
+  Group &operator=(Group &&other) noexcept = default;
+
+  ~Group() = default;
 };
 
 export struct Groups {
   size_t m_count;
-  std::vector<size_t> m_num_vbos;
+  std::vector<Group> m_groups;
 };
 
 /**\brief matches every entity to a corresponding group based on its component
@@ -32,23 +48,30 @@ export Groups create_groups(entt::registry &registry) {
   // create the groups
   std::vector<Group> groups;
   std::vector<size_t> num_vbos_v;
+  std::vector<std::bitset<static_cast<size_t>(ComponentTypes::BIT_COUNT)>>
+      components;
   size_t curr_id = 0;
+  size_t curr_vertex_offset = 0;
 
   bool found_group;
   registry.view<entt::entity>().each([&](const entt::entity entity) {
     found_group = false;
+    // check if the entity's component mask matches any existing group
     for (auto &group : groups) {
       if (group.m_components == registry.get<ComponentMask>(entity).m_bits) {
+        // add the entity to the group
         registry.emplace<GroupID>(entity, group.m_id);
         found_group = true;
+        ++group.m_num_entities;
         break;
       }
     }
+    // create a new group if the entity's component mask doesn't match any
+    // existing group
     if (!found_group) {
-      // update the number of vbos based on the categories of the per-veretx
-      // components
       size_t num_vbos = 0;
 
+      // update the number of vbos for this group
       ComponentMask &mask = registry.get<ComponentMask>(entity);
       for (int i : buffer_cat_lens) {
         for (int j = 0; j < i; ++j) {
@@ -60,7 +83,9 @@ export Groups create_groups(entt::registry &registry) {
       }
 
       num_vbos_v.push_back(num_vbos);
+      components.push_back(mask.m_bits);
 
+      // update the groups vector
       groups.push_back({curr_id, num_vbos, mask.m_bits});
       registry.emplace<GroupID>(entity, curr_id);
 
@@ -68,5 +93,5 @@ export Groups create_groups(entt::registry &registry) {
     }
   });
 
-  return Groups{curr_id, num_vbos_v};
+  return Groups{curr_id, std::move(groups)};
 }

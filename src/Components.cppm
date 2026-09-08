@@ -20,11 +20,11 @@ export struct Transform;
 export struct SolidColor;
 
 export enum class ComponentTypes {
-  //per-vertex attributes
+  // per-vertex attributes
   POSITION_2D,
   POSITION_3D, // buff cat 1
 
-  //the rest of these should not be per-vertex attributes
+  // the rest of these should not be per-vertex attributes
   TRANSFORM,
   SOLID_COLOR,
   BIT_COUNT
@@ -33,8 +33,9 @@ export enum class ComponentTypes {
 // for buffers that update at different frequencies
 export int buffer_cat_lens[]{2};
 
-/**\brief template specializations of this take components and return their value in the ComponentTypes enum
-*/
+/**\brief template specializations of this take components and return their
+ * value in the ComponentTypes enum
+ */
 export template <typename T> struct ComponentID;
 
 // template specializations of ComponentID
@@ -57,34 +58,52 @@ template <> struct ComponentID<SolidColor> {
 export template <typename T>
 constexpr int ComponentID_v = ComponentID<T>::value;
 
+/**\brief utility to return the size (in bytes) of a component
+ */
+export template <typename T> struct ComponentSize;
+
+template <> struct ComponentSize<Position2D> {
+  static constexpr int value = 2 * sizeof(GLfloat);
+};
+
+template <> struct ComponentSize<Position3D> {
+  static constexpr int value = 3 * sizeof(GLfloat);
+};
+
+export template <typename T>
+constexpr int ComponentSize_v = ComponentSize<T>::value;
+
 export enum class BufferBindings { BUFFER0, BUFFER1 };
 
-/**\brief returns the buffer binding that the per-vertex attribute should be attached to
+/**\brief returns the buffer binding that the per-vertex attribute should be
+ * attached to
  *
  * This ensures that attributes are only updated when they need to be updated.
- * Static positions may need to be set once, whereas changing colors may need to be updated for every draw call
-*/
+ * Static positions may need to be set once, whereas changing colors may need to
+ * be updated for every draw call
+ */
 export template <typename T> struct BufferBinding;
 
 template <> struct BufferBinding<Position2D> {
-  static constexpr size_t value = static_cast<int>(BufferBindings::BUFFER0);
+  static constexpr size_t value = static_cast<size_t>(BufferBindings::BUFFER0);
 };
 
 template <> struct BufferBinding<Position3D> {
-  static constexpr size_t value = static_cast<int>(BufferBindings::BUFFER0);
+  static constexpr size_t value = static_cast<size_t>(BufferBindings::BUFFER0);
 };
 
 export template <typename T>
 constexpr int BufferBinding_v = BufferBinding<T>::value;
 
-/**\brief with a component mask, we can easily create groups by comparing the masks of different components
-*/
+/**\brief with a component mask, we can easily create groups by comparing the
+ * masks of different components
+ */
 export struct ComponentMask {
   std::bitset<static_cast<size_t>(ComponentTypes::BIT_COUNT)> m_bits;
 };
 
 /**\brief each entity belongs to a group with the same vao and shader program
-*/
+ */
 export struct GroupID {
   size_t m_id;
 };

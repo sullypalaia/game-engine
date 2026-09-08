@@ -25,10 +25,16 @@ import OpenGLRenderer;
 int main() {
   //----------------window setup--------------
   // glfw setup
+  //
+
+  // for renderdoc
+  glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+
   glfwInit();
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+
 #ifndef NDEBUG
   glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 #endif
@@ -47,9 +53,9 @@ int main() {
 
   // triangle vertices
   std::vector<GLfloat> triangle_pos = {
-      -0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 1.0f, // bottom left
-      0.5f,  -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, // bottom right
-      0.0f,  0.5f,  0.0f, 0.0f, 1.0f, 1.0f  // top
+      -0.5f, -0.5f, // bottom left
+      0.5f,  -0.5f, // bottom right
+      0.0f,  0.5f   // top
   };
 
   // rectangle vertices
@@ -78,11 +84,7 @@ int main() {
 
   const entt::entity entity1 =
       ecs.m_add_entity_with_component<Position2D>(std::move(triangle_pos));
-  ecs.m_add_component_to_entity<SolidColor>(entity1, 1.0f, 0.0f, 0.0f, 1.0f);
-
-  const entt::entity entity2 =
-      ecs.m_add_entity_with_component<Position3D>(std::move(triangle_pos));
-  ecs.m_add_component_to_entity<SolidColor>(entity2, 0.0f, 1.0f, 0.0f, 1.0f);
+  ecs.m_add_component_to_entity<SolidColor>(entity1, 0.0f, 1.0f, 0.0f, 1.0f);
 
   OpenGLRenderer renderer(ecs.m_get_registry());
 
@@ -90,6 +92,8 @@ int main() {
 
   while (!glfwWindowShouldClose(window.m_get_window())) {
     glClearBufferfv(GL_COLOR, 0, clear_color);
+
+    renderer.m_draw();
 
     glfwSwapBuffers(window.m_get_window());
     glfwPollEvents();

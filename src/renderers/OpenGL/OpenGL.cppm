@@ -1,5 +1,6 @@
 module;
 
+#include <variant>
 #include <vector>
 
 #include "external/glad/glad.h"
@@ -33,30 +34,59 @@ private:
   Buffers m_buffers;
 
   std::vector<GLuint> m_vaos;
-  std::vector<GLuint> m_programs;
+  std::vector<EntityInfo> m_entity_info;
+  std::vector<GLuint> m_program_ids;
+
+  Groups m_groups;
 };
 
-/**\brief finds groups, creates vaos, uses Buffers to create buffers, uses
- * ShaderGen to generate shaders
+/**\uses Groups.cppm to create groups, creates vaos, uses Buffers.cppm to create
+ * buffers, uses ShaderGen.cppm to generate shaders
  */
 OpenGLRenderer::OpenGLRenderer(entt::registry &registry)
     : m_registry(registry), m_buffers(registry) {
-  const Groups groups = create_groups(registry);
+  // create the groups
+  m_groups = create_groups(registry);
 
-  m_vaos.resize(groups.m_count);
-  glCreateVertexArrays(groups.m_count, m_vaos.data());
+  // create the vaos
+  m_vaos.resize(m_groups.m_count);
+  glCreateVertexArrays(m_groups.m_count, m_vaos.data());
 
-  Buffers buffers(m_registry);
-  buffers.m_create_buffers(groups);
+  // create the buffers and return the number of vertices for each draw call
+  m_entity_info = m_buffers.m_create_buffers(m_groups, m_vaos);
 
-  ShaderGen shader_gen(registry, groups.m_count, m_vaos);
-  std::vector<GLuint> program_ids = shader_gen.m_gen_shaders();
+  // generate the shaders
+  ShaderGen shader_gen(registry, m_groups, m_vaos);
+  m_program_ids = shader_gen.m_gen_shaders();
 }
 
 void OpenGLRenderer::m_draw() const {
-  for (const auto &id : m_vaos) {
-    glBindVertexArray(id);
-    glDrawArrays(GL_TRIANGLES,
+  for (size_t i = 0; i < m_vaos.size(); ++i) {
+    glBindVertexArray(m_vaos[i]);
+    glUseProgram(m_program_ids[i]);
+
+    const EntityInfo &entity_info = m_entity_info[i];
+
+    for (size_t i = 0; i < entity_info.m_num_vertices.size(); ++i) {
+      // set the uniforms based on their type at runtime
+      for (const auto &uniform : entity_info.m_uniforms[i]) {
+        std::visit(
+            [&](const auto &u) {
+              using T = std::decay_t<decltype(u)>;
+              if constexpr (std::is_same_v<T, SolidColor>) {
+                GLint color_loc =
+                    glGetUniformLocation(m_program_ids[i], "color");
+                glUniform4f(color_loc, u.m_data[0], u.m_data[1], u.m_data[2],
+                            u.m_data[3]);
+              }
+            },
+            uniform);
+      }
+
+      // draw the entity
+      glDrawArrays(GL_TRIANGLES, entity_info.m_base_vertex[i],
+                   entity_info.m_num_vertices[i]);
+    }
   }
 }
 
