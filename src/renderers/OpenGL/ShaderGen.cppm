@@ -58,6 +58,9 @@ std::vector<GLuint> ShaderGen::m_gen_shaders() {
     const std::bitset<static_cast<size_t>(ComponentTypes::BIT_COUNT)> &bitmask =
         group.m_components;
 
+    // add the view and proj matrices to vertex shader
+    pos_ts += "proj * view * ";
+
     //-------------------uniforms-------------------
 
     if (bitmask.test(ComponentID_v<SolidColor>)) {

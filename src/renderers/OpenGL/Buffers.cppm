@@ -1,8 +1,7 @@
 module;
 
 #include <bitset>
-#include <format>
-#include <iostream>
+#include <functional>
 #include <unordered_set>
 #include <variant>
 #include <vector>
@@ -17,7 +16,8 @@ import Groups;
 import Components;
 import Shaders;
 
-using uniforms_variant = std::variant<SolidColor, Transform>;
+using uniforms_variant = std::variant<std::reference_wrapper<SolidColor>,
+                                      std::reference_wrapper<Transform>>;
 // at some point add variant support for the buffer data
 
 export struct EntityInfo {

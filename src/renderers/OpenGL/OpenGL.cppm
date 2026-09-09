@@ -1,5 +1,6 @@
 module;
 
+#include <functional>
 #include <variant>
 #include <vector>
 
@@ -76,18 +77,22 @@ void OpenGLRenderer::m_draw() const {
         std::visit(
             [&](const auto &u) {
               using T = std::decay_t<decltype(u)>;
-              if constexpr (std::is_same_v<T, SolidColor>) {
+
+              const auto &data = u.get().m_data;
+
+              if constexpr (std::is_same_v<
+                                T, std::reference_wrapper<SolidColor>>) {
                 GLint color_loc =
                     glGetUniformLocation(m_program_ids[i], "color");
-                glUniform4f(color_loc, u.m_data[0], u.m_data[1], u.m_data[2],
-                            u.m_data[3]);
+                glUniform4f(color_loc, data[0], data[1], data[2], data[3]);
               }
 
-              if constexpr (std::is_same_v<T, Transform>) {
+              if constexpr (std::is_same_v<T,
+                                           std::reference_wrapper<Transform>>) {
                 GLint model_loc =
                     glGetUniformLocation(m_program_ids[i], "model");
                 glUniformMatrix4fv(model_loc, 1, GL_FALSE,
-                                   glm::value_ptr(u.m_data));
+                                   glm::value_ptr(data));
               }
             },
             uniform);

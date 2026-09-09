@@ -57,9 +57,9 @@ int main() {
   };
 
   std::vector<GLfloat> triangle_colors = {
-      0.0f, 1.0f, 0.0f, 1.0f, // bottom left
+      1.0f, 0.0f, 0.0f, 1.0f, // bottom left
       0.0f, 1.0f, 0.0f, 1.0f, // bottom right
-      1.0f, 0.0f, 0.0f, 1.0f  // top
+      0.0f, 0.0f, 1.0f, 1.0f  // top
   };
 
   // rectangle vertices
@@ -116,6 +116,30 @@ int main() {
 
     while (!glfwWindowShouldClose(window.m_get_window())) {
       glClearBufferfv(GL_COLOR, 0, clear_color);
+
+      // yes, I know I know this is a bad way to do this, but I don't care for
+      // this example right now
+
+      ecs.m_update_entity_component<Transform>(
+          entity1,
+          glm::rotate(glm::scale(glm::translate(glm::mat4(1.0f),
+                                                glm::vec3(0.5, 0.0f, 0.0f)),
+                                 glm::vec3(0.2f)),
+                      static_cast<float>(glfwGetTime()),
+                      glm::vec3(0.0f, 0.0f, 1.0f)));
+
+      ecs.m_update_entity_component<Transform>(
+          entity2, glm::rotate(glm::scale(glm::mat4(1.0f), glm::vec3(0.2f)),
+                               static_cast<float>(glfwGetTime()),
+                               glm::vec3(0.0f, 0.0f, -1.0f)));
+
+      ecs.m_update_entity_component<Transform>(
+          entity3,
+          glm::rotate(glm::scale(glm::translate(glm::mat4(1.0f),
+                                                glm::vec3(-0.5, 0.0f, 0.0f)),
+                                 glm::vec3(0.2f)),
+                      static_cast<float>(glfwGetTime() * 2.0f),
+                      glm::vec3(0.0f, 0.0f, 1.0f)));
 
       renderer.m_draw();
 

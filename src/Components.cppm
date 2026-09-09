@@ -142,7 +142,7 @@ export struct Color {
 };
 
 export struct Transform {
-  const glm::mat4 m_data;
+  glm::mat4 m_data;
 };
 
 export struct SolidColor {
