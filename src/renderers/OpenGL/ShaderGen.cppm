@@ -58,10 +58,28 @@ std::vector<GLuint> ShaderGen::m_gen_shaders() {
     const std::bitset<static_cast<size_t>(ComponentTypes::BIT_COUNT)> &bitmask =
         group.m_components;
 
+    //-------------------uniforms-------------------
+
+    if (bitmask.test(ComponentID_v<SolidColor>)) {
+      frag_shader += std::format("layout (location = {}) uniform vec4 color;\n",
+                                 curr_uniform_loc);
+      color_str = "color;";
+      ++curr_uniform_loc;
+    }
+
+    if (bitmask.test(ComponentID_v<Transform>)) {
+      vert_shader += std::format("layout (location = {}) uniform mat4 model;\n",
+                                 curr_uniform_loc);
+      pos_ts += "model * ";
+      ++curr_uniform_loc;
+    }
+
+    //-------------------vertex attributes-------------------
+
     if (bitmask.test(ComponentID_v<Position2D>)) {
       vert_shader +=
           std::format("layout (location = {}) in vec2 pos;\n", curr_attrib_loc);
-      pos_ts = "vec4(pos, 0.0f, 1.0f);\n";
+      pos_ts += "vec4(pos, 0.0f, 1.0f);\n";
       set_attrib(m_vaos[group.m_id], curr_attrib_loc,
                  BufferBinding_v<Position2D>, 2, GL_FLOAT, GL_FALSE,
                  relative_offset, 0);
@@ -80,11 +98,17 @@ std::vector<GLuint> ShaderGen::m_gen_shaders() {
       relative_offset += sizeof(float) * 3;
     }
 
-    if (bitmask.test(ComponentID_v<SolidColor>)) {
-      frag_shader += std::format("layout (location = {}) uniform vec4 color;\n",
-                                 curr_uniform_loc);
-      color_str = "color;";
-      ++curr_uniform_loc;
+    if (bitmask.test(ComponentID_v<Color>)) {
+      vert_shader += std::format("layout (location = {}) in vec4 color;\n",
+                                 curr_attrib_loc);
+      vert_shader += std::format("out vec4 color_out;\n");
+
+      frag_shader += std::format("in vec4 color_out;\n", curr_attrib_loc);
+      color_str = "color_out;";
+      set_attrib(m_vaos[group.m_id], curr_attrib_loc, BufferBinding_v<Color>, 4,
+                 GL_FLOAT, GL_FALSE, relative_offset, 0);
+      ++curr_attrib_loc;
+      relative_offset += sizeof(float) * 4;
     }
 
     // add the mats uniform block to the vertex shader
@@ -92,6 +116,11 @@ std::vector<GLuint> ShaderGen::m_gen_shaders() {
                    "view;\n\tmat4 proj;\n};\n\n";
 
     vert_shader += "void main() {\n";
+
+    // set the color in the vertex shader if it is a vertex attribute
+    if (bitmask.test(ComponentID_v<Color>)) {
+      vert_shader += "\tcolor_out = color;\n";
+    }
 
     // add the position line and end
     pos_str += pos_ts;
@@ -131,9 +160,6 @@ std::vector<GLuint> ShaderGen::m_gen_shaders() {
     frag_fs << m_frag_shaders[i];
 
     frag_fs.close();
-  }
-
-  for (size_t i = 0; i < m_groups.m_count; ++i) {
   }
 
   return generate_ids(m_vert_shaders, m_frag_shaders, m_groups.m_count);

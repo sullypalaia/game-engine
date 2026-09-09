@@ -1,8 +1,6 @@
 // this renders different primitives separately, each with different attributes
 // - no multi-draw
 
-#include <iostream>
-
 #include "external/glad/glad.h"
 
 #include "external/GLFW/glfw3.h"
@@ -58,6 +56,12 @@ int main() {
       0.0f,  0.5f   // top
   };
 
+  std::vector<GLfloat> triangle_colors = {
+      0.0f, 1.0f, 0.0f, 1.0f, // bottom left
+      0.0f, 1.0f, 0.0f, 1.0f, // bottom right
+      1.0f, 0.0f, 0.0f, 1.0f  // top
+  };
+
   // rectangle vertices
   constexpr GLfloat rect_pos[]{
       -0.5f, -0.5f, // bottom left - 0
@@ -83,20 +87,41 @@ int main() {
   ECS ecs;
 
   const entt::entity entity1 =
-      ecs.m_add_entity_with_component<Position2D>(std::move(triangle_pos));
-  ecs.m_add_component_to_entity<SolidColor>(entity1, 0.0f, 1.0f, 0.0f, 1.0f);
+      ecs.m_add_entity_with_component<Position2D>(triangle_pos);
+  ecs.m_add_component_to_entity<SolidColor>(entity1, 0.0f, 0.0f, 1.0f, 1.0f);
+  ecs.m_add_component_to_entity<Transform>(
+      entity1,
+      glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.5f, 0.0f, 0.0f)),
+                 glm::vec3(0.2f)));
 
-  OpenGLRenderer renderer(ecs.m_get_registry());
+  const entt::entity entity2 =
+      ecs.m_add_entity_with_component<Position2D>(triangle_pos);
+  ecs.m_add_component_to_entity<Color>(entity2, triangle_colors);
+  ecs.m_add_component_to_entity<Transform>(
+      entity2, glm::scale(glm::mat4(1.0f), glm::vec3(0.2f)));
 
-  constexpr GLfloat clear_color[4]{1.0f, 1.0f, 1.0f, 0.0f};
+  const entt::entity entity3 =
+      ecs.m_add_entity_with_component<Position2D>(triangle_pos);
+  ecs.m_add_component_to_entity<SolidColor>(entity3, 1.0f, 0.0f, 0.0f, 1.0f);
+  ecs.m_add_component_to_entity<Transform>(
+      entity3,
+      glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, 0.0f, 0.0f)),
+                 glm::vec3(0.2f)));
 
-  while (!glfwWindowShouldClose(window.m_get_window())) {
-    glClearBufferfv(GL_COLOR, 0, clear_color);
+  {
+    // make sure the destructor is called before the window is destroyed
+    OpenGLRenderer renderer(ecs.m_get_registry());
 
-    renderer.m_draw();
+    constexpr GLfloat clear_color[4]{1.0f, 1.0f, 1.0f, 0.0f};
 
-    glfwSwapBuffers(window.m_get_window());
-    glfwPollEvents();
+    while (!glfwWindowShouldClose(window.m_get_window())) {
+      glClearBufferfv(GL_COLOR, 0, clear_color);
+
+      renderer.m_draw();
+
+      glfwSwapBuffers(window.m_get_window());
+      glfwPollEvents();
+    }
   }
 
   window.m_destroy();

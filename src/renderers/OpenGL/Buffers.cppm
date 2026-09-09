@@ -1,5 +1,9 @@
 module;
 
+#include <bitset>
+#include <format>
+#include <iostream>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -13,7 +17,8 @@ import Groups;
 import Components;
 import Shaders;
 
-using uniforms_variant = std::variant<SolidColor>;
+using uniforms_variant = std::variant<SolidColor, Transform>;
+// at some point add variant support for the buffer data
 
 export struct EntityInfo {
   std::vector<size_t> m_num_vertices;
@@ -22,6 +27,8 @@ export struct EntityInfo {
 
   EntityInfo(size_t num_vertices, size_t base_vertex)
       : m_num_vertices({num_vertices}), m_base_vertex({base_vertex}) {}
+
+  EntityInfo() = default;
 };
 
 export class Buffers {
@@ -40,11 +47,15 @@ private:
   std::vector<std::vector<GLsizei>> m_vbo_strides;
   std::vector<std::vector<std::vector<GLfloat>>> m_data;
   std::vector<std::vector<size_t>> m_data_sizes;
-  std::vector<size_t> m_num_vertices;
   std::vector<size_t> m_curr_pos_vbo_offsets;
+  std::vector<std::vector<std::vector<size_t>>> m_curr_component_offsets;
+  std::vector<std::vector<std::vector<size_t>>> m_num_rows;
+  std::vector<std::vector<std::unordered_set<size_t>>> m_added_entities;
+  std::vector<std::vector<std::vector<size_t>>> m_curr_entity_base_vertex;
 
-  // this will hold the number of vertices and the base vertex for each entity
-  std::vector<EntityInfo> m_entity_vertex_info;
+  // this will hold the number of vertices and the base vertex for each
+  // entity
+  std::vector<EntityInfo> m_entity_info;
 
   std::vector<EntityInfo> m_create_vbos(const Groups &groups,
                                         const std::vector<GLuint> &vbo_ids);
@@ -53,7 +64,10 @@ private:
   void m_create_ebo();
 
   template <typename T>
-  void m_add_component_to_buffer(const entt::entity entity);
+  void m_add_component_to_buffer(const entt::entity entity,
+                                 const Groups &groups,
+                                 const size_t num_values_per_row,
+                                 const size_t curr_entity);
 };
 
 Buffers::Buffers(entt::registry &registry) : m_registry(registry) {}
@@ -69,66 +83,79 @@ Buffers::m_create_buffers(const Groups &groups,
 std::vector<EntityInfo>
 Buffers::m_create_vbos(const Groups &groups,
                        const std::vector<GLuint> &vao_ids) {
+
+  const size_t num_groups = groups.m_count;
+
   // resize the outer vectors
-  m_vbo_ids.resize(groups.m_count);
-  m_vbo_strides.resize(groups.m_count);
-  m_data_sizes.resize(groups.m_count);
-  m_num_vertices.resize(groups.m_count);
-  m_data.resize(groups.m_count);
-  m_curr_pos_vbo_offsets.resize(groups.m_count);
+  m_vbo_ids.resize(num_groups);
+  m_vbo_strides.resize(num_groups);
+  m_data_sizes.resize(num_groups);
+  m_data.resize(num_groups);
+  m_curr_pos_vbo_offsets.resize(num_groups);
+  m_curr_component_offsets.resize(num_groups);
+  m_num_rows.resize(num_groups);
+  m_added_entities.resize(num_groups);
+  m_curr_entity_base_vertex.resize(num_groups);
 
   // resize the inner vectors
-  for (size_t i = 0; i < groups.m_count; ++i) {
+  for (size_t i = 0; i < num_groups; ++i) {
     const size_t num_vbos = groups.m_groups[i].m_num_vbos;
     m_vbo_ids[i].resize(num_vbos);
     m_data[i].resize(num_vbos);
     m_data_sizes[i].resize(num_vbos);
     m_vbo_strides[i].resize(num_vbos);
+    m_curr_component_offsets[i].resize(num_vbos);
+    m_num_rows[i].resize(num_vbos);
+    m_added_entities[i].resize(num_vbos);
+    m_curr_entity_base_vertex[i].resize(num_vbos);
   }
 
   // reserve the entity vertex info vector
-  m_entity_vertex_info.reserve(groups.m_count);
-  for (size_t i = 0; i < groups.m_count; ++i) {
-    m_entity_vertex_info.emplace_back(0, 0);
-  }
+  m_entity_info.resize(num_groups);
 
   // create the buffers
-  for (size_t i = 0; i < groups.m_count; ++i) {
+  for (size_t i = 0; i < num_groups; ++i) {
     size_t num_vbos = groups.m_groups[i].m_num_vbos;
     m_vbo_ids[i].resize(num_vbos);
     glCreateBuffers(num_vbos, m_vbo_ids[i].data());
   }
 
+  std::vector<size_t> curr_entities(num_groups);
   m_registry.view<entt::entity>().each([&](const entt::entity entity) {
     const size_t group_id = m_registry.get<GroupID>(entity).m_id;
+
+    const size_t curr_entity = curr_entities[group_id];
 
     // check the component mask and add components accordingly
     const auto &bitmask = m_registry.get<ComponentMask>(entity).m_bits;
     if (bitmask.test(ComponentID_v<Position2D>)) {
-      m_add_component_to_buffer<Position2D>(entity);
+      m_add_component_to_buffer<Position2D>(entity, groups, 2, curr_entity);
 
       size_t num_vertices =
           m_registry.get<Position2D>(entity).m_data.size() / 2.0;
 
-      m_entity_vertex_info[group_id] = {num_vertices,
-                                        m_curr_pos_vbo_offsets[group_id]};
+      m_entity_info[group_id].m_num_vertices.push_back(num_vertices);
+      m_entity_info[group_id].m_base_vertex.push_back(
+          m_curr_pos_vbo_offsets[group_id]);
 
       m_curr_pos_vbo_offsets[group_id] += num_vertices;
     }
 
     if (bitmask.test(ComponentID_v<Position3D>)) {
-      m_add_component_to_buffer<Position3D>(entity);
-
-      m_num_vertices[group_id] +=
-          m_registry.get<Position3D>(entity).m_data.size() / 3.0;
+      m_add_component_to_buffer<Position3D>(entity, groups, 3, curr_entity);
 
       size_t num_vertices =
           m_registry.get<Position3D>(entity).m_data.size() / 3.0;
 
-      m_entity_vertex_info[group_id] = {num_vertices,
-                                        m_curr_pos_vbo_offsets[group_id]};
+      m_entity_info[group_id].m_num_vertices.push_back(num_vertices);
+      m_entity_info[group_id].m_base_vertex.push_back(
+          m_curr_pos_vbo_offsets[group_id]);
 
       m_curr_pos_vbo_offsets[group_id] += num_vertices;
+    }
+
+    if (bitmask.test(ComponentID_v<Color>)) {
+      m_add_component_to_buffer<Color>(entity, groups, 4, curr_entity);
     }
 
     // add the uniforms for the entity
@@ -138,7 +165,13 @@ Buffers::m_create_vbos(const Groups &groups,
       uniforms.push_back(m_registry.get<SolidColor>(entity));
     }
 
-    m_entity_vertex_info[group_id].m_uniforms.push_back(uniforms);
+    if (bitmask.test(ComponentID_v<Transform>)) {
+      uniforms.push_back(m_registry.get<Transform>(entity));
+    }
+
+    m_entity_info[group_id].m_uniforms.push_back(uniforms);
+
+    ++curr_entities[group_id];
   });
 
   // transfer the data to the gl buffers
@@ -147,35 +180,92 @@ Buffers::m_create_vbos(const Groups &groups,
       glNamedBufferStorage(m_vbo_ids[i][j], m_data_sizes[i][j],
                            m_data[i][j].data(), 0);
 
+      // set the vertex buffer for the vao
       glVertexArrayVertexBuffer(vao_ids[i], j, m_vbo_ids[i][j], 0,
-                                m_vbo_strides[i][j]);
+                                groups.m_groups[i].m_strides[j]);
+      ;
     }
   }
 
   // return the number of vertices for each group and each vbo
-  return m_entity_vertex_info;
+  return m_entity_info;
 }
 
 void Buffers::m_create_ebo() {}
 
 template <typename T>
-void Buffers::m_add_component_to_buffer(const entt::entity entity) {
+void Buffers::m_add_component_to_buffer(const entt::entity entity,
+                                        const Groups &groups,
+                                        const size_t num_values_per_row,
+                                        const size_t curr_entity) {
   // get the data of the component
   using data_type = typename decltype(T::m_data)::value_type;
-  std::vector<data_type> vbo_data = m_registry.get<T>(entity).m_data;
 
-  // append the data to the end of the corresponding buffer
-  auto &target_buffer =
-      m_data[m_registry.get<GroupID>(entity).m_id][BufferBinding_v<T>];
-  target_buffer.insert(target_buffer.end(), vbo_data.begin(), vbo_data.end());
+  // get the group id, buffer binding, vbo stride, data, and destination buffer
+  const size_t group_id = m_registry.get<GroupID>(entity).m_id;
+  constexpr size_t buffer_binding = BufferBinding_v<T>;
+  const size_t vbo_stride =
+      groups.m_groups[group_id].m_strides[buffer_binding] / sizeof(data_type);
+  const auto &data = m_registry.get<T>(entity).m_data;
+  auto &dest = m_data[group_id][buffer_binding];
+
+  // this will run for entities that have not been seen yet
+  if (m_added_entities[group_id][buffer_binding].find(curr_entity) ==
+      m_added_entities[group_id][buffer_binding].end()) {
+
+    // update the entity base vertex
+    m_curr_entity_base_vertex[group_id][buffer_binding].resize(curr_entity + 2);
+    if (curr_entity != 0)
+      m_curr_entity_base_vertex[group_id][buffer_binding][curr_entity] =
+          m_curr_entity_base_vertex[group_id][buffer_binding][curr_entity - 1] +
+          m_num_rows[group_id][buffer_binding][curr_entity - 1] * vbo_stride;
+
+    // add the number of rows for the current entity
+    size_t entity_num_rows = data.size() / num_values_per_row;
+
+    m_num_rows[group_id][buffer_binding].push_back(entity_num_rows);
+
+    m_curr_component_offsets[group_id][buffer_binding].push_back(0);
+
+    // insert the entity into the added entities set
+    m_added_entities[group_id][buffer_binding].insert(curr_entity);
+
+    size_t entity_size = entity_num_rows * vbo_stride;
+
+    // resize the data vector
+    if (m_data[group_id][buffer_binding].empty())
+      m_data[group_id][buffer_binding].resize(entity_size);
+    else
+      m_data[group_id][buffer_binding].resize(
+          m_data[group_id][buffer_binding].size() + entity_size);
+
+    // update the base vertex of the next entity
+    m_curr_entity_base_vertex[group_id][buffer_binding][curr_entity + 1] =
+        m_curr_entity_base_vertex[group_id][buffer_binding][curr_entity] +
+        entity_num_rows * vbo_stride;
+  }
+
+  size_t num_rows = m_num_rows[group_id][buffer_binding][curr_entity];
+
+  // copy the data into the destination buffer at the correct offset for each
+  // row
+  for (size_t i = 0; i < num_rows; ++i) {
+    auto src_offset = data.begin() + (num_values_per_row * i);
+
+    std::copy(
+        src_offset, src_offset + num_values_per_row,
+        dest.begin() +
+            m_curr_component_offsets[group_id][buffer_binding][curr_entity] +
+            m_curr_entity_base_vertex[group_id][buffer_binding][curr_entity] +
+            (vbo_stride * i));
+  }
+
+  // update the offset of the current component
+  m_curr_component_offsets[group_id][buffer_binding][curr_entity] +=
+      num_values_per_row;
 
   // update the size of the buffer
-  m_data_sizes[m_registry.get<GroupID>(entity).m_id][BufferBinding_v<T>] +=
-      vbo_data.size() * sizeof(data_type);
-
-  // set the stride of the buffer
-  m_vbo_strides[m_registry.get<GroupID>(entity).m_id][BufferBinding_v<T>] +=
-      ComponentSize_v<T>;
+  m_data_sizes[group_id][BufferBinding_v<T>] = dest.size() * sizeof(data_type);
 }
 
 void Buffers::m_delete_buffers() { m_delete_vbos(); }

@@ -14,24 +14,31 @@ export module Components;
 import Shaders;
 
 // forward declarations
+
+// static attributes
 export struct Position2D;
 export struct Position3D;
+export struct Color;
+
 export struct Transform;
 export struct SolidColor;
 
 export enum class ComponentTypes {
   // per-vertex attributes
   POSITION_2D,
-  POSITION_3D, // buff cat 1
+  POSITION_3D,
+  Color,
+  // ^buff cat 1 - static
 
-  // the rest of these should not be per-vertex attributes
-  TRANSFORM,
+  // the rest of these should not be per-vertex attributes:
+  TRANSFORM, // note that TRANSFORM can also be used as the size of the
+             // per-vertex attribute list
   SOLID_COLOR,
   BIT_COUNT
 };
 
 // for buffers that update at different frequencies
-export int buffer_cat_lens[]{2};
+export int buffer_cat_lens[]{3};
 
 /**\brief template specializations of this take components and return their
  * value in the ComponentTypes enum
@@ -45,6 +52,10 @@ template <> struct ComponentID<Position2D> {
 
 template <> struct ComponentID<Position3D> {
   static constexpr int value = static_cast<int>(ComponentTypes::POSITION_3D);
+};
+
+template <> struct ComponentID<Color> {
+  static constexpr int value = static_cast<int>(ComponentTypes::Color);
 };
 
 template <> struct ComponentID<Transform> {
@@ -70,6 +81,10 @@ template <> struct ComponentSize<Position3D> {
   static constexpr int value = 3 * sizeof(GLfloat);
 };
 
+template <> struct ComponentSize<Color> {
+  static constexpr int value = 4 * sizeof(GLfloat);
+};
+
 export template <typename T>
 constexpr int ComponentSize_v = ComponentSize<T>::value;
 
@@ -89,6 +104,10 @@ template <> struct BufferBinding<Position2D> {
 };
 
 template <> struct BufferBinding<Position3D> {
+  static constexpr size_t value = static_cast<size_t>(BufferBindings::BUFFER0);
+};
+
+template <> struct BufferBinding<Color> {
   static constexpr size_t value = static_cast<size_t>(BufferBindings::BUFFER0);
 };
 
@@ -118,6 +137,10 @@ export struct Position3D {
   std::vector<GLfloat> m_data;
 };
 
+export struct Color {
+  std::vector<GLfloat> m_data;
+};
+
 export struct Transform {
   const glm::mat4 m_data;
 };
@@ -129,11 +152,11 @@ export struct SolidColor {
 //----------------opengl interface--------------
 
 namespace OpenGL {
-export struct Mesh {
-  GLuint m_vao;
-  GLuint m_program;
-  std::vector<GLuint> m_vbos;
-  std::optional<GLuint> m_ebo;
-};
+export typedef struct {
+  GLuint m_count;
+  GLuint m_instance_count;
+  GLuint m_first;
+  GLuint m_base_instance;
+} DrawArraysIndirectStruct;
 
 } // namespace OpenGL

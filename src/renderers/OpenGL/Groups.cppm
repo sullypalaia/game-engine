@@ -16,12 +16,14 @@ export struct Group {
   size_t m_num_vbos;
   std::bitset<static_cast<size_t>(ComponentTypes::BIT_COUNT)> m_components;
   size_t m_num_entities;
+  std::vector<size_t> m_strides;
 
   // constructor because its not an aggregate anymore
   Group(size_t id, size_t num_vbos,
-        std::bitset<static_cast<size_t>(ComponentTypes::BIT_COUNT)> components)
+        std::bitset<static_cast<size_t>(ComponentTypes::BIT_COUNT)> components,
+        std::vector<size_t> strides)
       : m_id(id), m_num_vbos(num_vbos), m_components(components),
-        m_num_entities(1) {}
+        m_num_entities(1), m_strides(strides) {}
 
   Group(const Group &other) = default;
   Group &operator=(const Group &other) = default;
@@ -62,7 +64,6 @@ export Groups create_groups(entt::registry &registry) {
         // add the entity to the group
         registry.emplace<GroupID>(entity, group.m_id);
         found_group = true;
-        ++group.m_num_entities;
         break;
       }
     }
@@ -82,11 +83,31 @@ export Groups create_groups(entt::registry &registry) {
         }
       }
 
+      // calculate the strides for the buffers in terms of the number of
+      // elements of the component type
+      std::vector<size_t> strides(num_vbos);
+      for (size_t i = 0; i < static_cast<size_t>(ComponentTypes::TRANSFORM);
+           ++i) {
+        if (mask.m_bits.test(i)) {
+          switch (i) {
+          case ComponentID_v<Position2D>:
+            strides[BufferBinding_v<Position2D>] += ComponentSize_v<Position2D>;
+            break;
+          case ComponentID_v<Position3D>:
+            strides[BufferBinding_v<Position3D>] += ComponentSize_v<Position3D>;
+            break;
+          case ComponentID_v<Color>:
+            strides[BufferBinding_v<Color>] += ComponentSize_v<Color>;
+            break;
+          }
+        }
+      }
+
       num_vbos_v.push_back(num_vbos);
       components.push_back(mask.m_bits);
 
       // update the groups vector
-      groups.push_back({curr_id, num_vbos, mask.m_bits});
+      groups.push_back({curr_id, num_vbos, mask.m_bits, std::move(strides)});
       registry.emplace<GroupID>(entity, curr_id);
 
       ++curr_id;

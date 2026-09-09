@@ -7,6 +7,9 @@ module;
 
 #include "entt/entt.hpp"
 
+#include "external/glm/glm.hpp"
+#include "external/glm/gtc/type_ptr.hpp"
+
 #include "macros.h"
 
 export module OpenGLRenderer;
@@ -67,9 +70,9 @@ void OpenGLRenderer::m_draw() const {
 
     const EntityInfo &entity_info = m_entity_info[i];
 
-    for (size_t i = 0; i < entity_info.m_num_vertices.size(); ++i) {
+    for (size_t j = 0; j < entity_info.m_num_vertices.size(); ++j) {
       // set the uniforms based on their type at runtime
-      for (const auto &uniform : entity_info.m_uniforms[i]) {
+      for (const auto &uniform : entity_info.m_uniforms[j]) {
         std::visit(
             [&](const auto &u) {
               using T = std::decay_t<decltype(u)>;
@@ -79,13 +82,20 @@ void OpenGLRenderer::m_draw() const {
                 glUniform4f(color_loc, u.m_data[0], u.m_data[1], u.m_data[2],
                             u.m_data[3]);
               }
+
+              if constexpr (std::is_same_v<T, Transform>) {
+                GLint model_loc =
+                    glGetUniformLocation(m_program_ids[i], "model");
+                glUniformMatrix4fv(model_loc, 1, GL_FALSE,
+                                   glm::value_ptr(u.m_data));
+              }
             },
             uniform);
       }
 
       // draw the entity
-      glDrawArrays(GL_TRIANGLES, entity_info.m_base_vertex[i],
-                   entity_info.m_num_vertices[i]);
+      glDrawArrays(GL_TRIANGLES, entity_info.m_base_vertex[j],
+                   entity_info.m_num_vertices[j]);
     }
   }
 }
