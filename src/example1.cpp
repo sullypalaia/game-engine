@@ -25,7 +25,7 @@ int main() {
   // glfw setup
   //
 
-  // for renderdoc
+  // use x11 for renderdoc support
   glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
 
   glfwInit();
@@ -54,6 +54,18 @@ int main() {
       -0.5f, -0.5f, // bottom left
       0.5f,  -0.5f, // bottom right
       0.0f,  0.5f   // top
+  };
+
+  std::vector<GLfloat> triangle_pos1 = {
+      -0.2f, 0.0f, // bottom left
+      0.2f,  0.0f, // bottom right
+      0.0f,  0.4f  // top
+  };
+
+  std::vector<GLfloat> triangle_pos2 = {
+      -0.2f, -0.4f, // bottom left
+      0.2f,  -0.4f, // bottom right
+      0.0f,  0.0f   // top
   };
 
   std::vector<GLfloat> triangle_colors = {
@@ -86,27 +98,39 @@ int main() {
 
   ECS ecs;
 
+  const glm::mat4 entity1transform =
+      glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.5f, 0.0f, 0.0f)),
+                 glm::vec3(0.2f));
+
+  const glm::mat4 entity2transform =
+      glm::scale(glm::mat4(1.0f), glm::vec3(0.2f));
+
+  const glm::mat4 entity3transform =
+      glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, 0.0f, 0.0f)),
+                 glm::vec3(0.2f));
+
   const entt::entity entity1 =
       ecs.m_add_entity_with_component<Position2D>(triangle_pos);
   ecs.m_add_component_to_entity<SolidColor>(entity1, 0.0f, 0.0f, 1.0f, 1.0f);
-  ecs.m_add_component_to_entity<Transform>(
-      entity1,
-      glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.5f, 0.0f, 0.0f)),
-                 glm::vec3(0.2f)));
+  ecs.m_add_component_to_entity<Transform>(entity1, entity1transform);
 
   const entt::entity entity2 =
       ecs.m_add_entity_with_component<Position2D>(triangle_pos);
   ecs.m_add_component_to_entity<Color>(entity2, triangle_colors);
-  ecs.m_add_component_to_entity<Transform>(
-      entity2, glm::scale(glm::mat4(1.0f), glm::vec3(0.2f)));
+  ecs.m_add_component_to_entity<Transform>(entity2, entity2transform);
 
   const entt::entity entity3 =
       ecs.m_add_entity_with_component<Position2D>(triangle_pos);
   ecs.m_add_component_to_entity<SolidColor>(entity3, 1.0f, 0.0f, 0.0f, 1.0f);
-  ecs.m_add_component_to_entity<Transform>(
-      entity3,
-      glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, 0.0f, 0.0f)),
-                 glm::vec3(0.2f)));
+  ecs.m_add_component_to_entity<Transform>(entity3, entity3transform);
+
+  const entt::entity entity4 =
+      ecs.m_add_entity_with_component<Position2D>(triangle_pos1);
+  ecs.m_add_component_to_entity<Color>(entity4, triangle_colors);
+
+  const entt::entity entity5 =
+      ecs.m_add_entity_with_component<Position2D>(triangle_pos2);
+  ecs.m_add_component_to_entity<Color>(entity5, triangle_colors);
 
   {
     // make sure the destructor is called before the window is destroyed
@@ -122,24 +146,18 @@ int main() {
 
       ecs.m_update_entity_component<Transform>(
           entity1,
-          glm::rotate(glm::scale(glm::translate(glm::mat4(1.0f),
-                                                glm::vec3(0.5, 0.0f, 0.0f)),
-                                 glm::vec3(0.2f)),
-                      static_cast<float>(glfwGetTime()),
+          glm::rotate(entity1transform, static_cast<float>(glfwGetTime()),
                       glm::vec3(0.0f, 0.0f, 1.0f)));
 
       ecs.m_update_entity_component<Transform>(
-          entity2, glm::rotate(glm::scale(glm::mat4(1.0f), glm::vec3(0.2f)),
-                               static_cast<float>(glfwGetTime()),
-                               glm::vec3(0.0f, 0.0f, -1.0f)));
+          entity2,
+          glm::rotate(entity2transform, static_cast<float>(glfwGetTime()),
+                      glm::vec3(0.0f, 0.0f, -1.0f)));
 
       ecs.m_update_entity_component<Transform>(
-          entity3,
-          glm::rotate(glm::scale(glm::translate(glm::mat4(1.0f),
-                                                glm::vec3(-0.5, 0.0f, 0.0f)),
-                                 glm::vec3(0.2f)),
-                      static_cast<float>(glfwGetTime() * 2.0f),
-                      glm::vec3(0.0f, 0.0f, 1.0f)));
+          entity3, glm::rotate(entity3transform,
+                               static_cast<float>(glfwGetTime() * 2.0f),
+                               glm::vec3(0.0f, 0.0f, 1.0f)));
 
       renderer.m_draw();
 

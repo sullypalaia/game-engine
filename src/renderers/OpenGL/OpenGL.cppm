@@ -71,36 +71,44 @@ void OpenGLRenderer::m_draw() const {
 
     const EntityInfo &entity_info = m_entity_info[i];
 
-    for (size_t j = 0; j < entity_info.m_num_vertices.size(); ++j) {
-      // set the uniforms based on their type at runtime
-      for (const auto &uniform : entity_info.m_uniforms[j]) {
-        std::visit(
-            [&](const auto &u) {
-              using T = std::decay_t<decltype(u)>;
+    // we can multi-draw if there are not any uniforms in the group
+    if (entity_info.m_uniforms[0].empty()) {
+      glMultiDrawArrays(GL_TRIANGLES, entity_info.m_base_vertex.data(),
+                        entity_info.m_num_vertices.data(),
+                        entity_info.m_num_vertices.size());
+    } else {
+      for (size_t j = 0; j < entity_info.m_num_vertices.size(); ++j) {
 
-              const auto &data = u.get().m_data;
+        // set the uniforms based on their type at runtime
+        for (const auto &uniform : entity_info.m_uniforms[j]) {
+          std::visit(
+              [&](const auto &u) {
+                using T = std::decay_t<decltype(u)>;
 
-              if constexpr (std::is_same_v<
-                                T, std::reference_wrapper<SolidColor>>) {
-                GLint color_loc =
-                    glGetUniformLocation(m_program_ids[i], "color");
-                glUniform4f(color_loc, data[0], data[1], data[2], data[3]);
-              }
+                const auto &data = u.get().m_data;
 
-              if constexpr (std::is_same_v<T,
-                                           std::reference_wrapper<Transform>>) {
-                GLint model_loc =
-                    glGetUniformLocation(m_program_ids[i], "model");
-                glUniformMatrix4fv(model_loc, 1, GL_FALSE,
-                                   glm::value_ptr(data));
-              }
-            },
-            uniform);
+                if constexpr (std::is_same_v<
+                                  T, std::reference_wrapper<SolidColor>>) {
+                  GLint color_loc =
+                      glGetUniformLocation(m_program_ids[i], "color");
+                  glUniform4f(color_loc, data[0], data[1], data[2], data[3]);
+                }
+
+                if constexpr (std::is_same_v<
+                                  T, std::reference_wrapper<Transform>>) {
+                  GLint model_loc =
+                      glGetUniformLocation(m_program_ids[i], "model");
+                  glUniformMatrix4fv(model_loc, 1, GL_FALSE,
+                                     glm::value_ptr(data));
+                }
+              },
+              uniform);
+        }
+
+        // draw the entity
+        glDrawArrays(GL_TRIANGLES, entity_info.m_base_vertex[j],
+                     entity_info.m_num_vertices[j]);
       }
-
-      // draw the entity
-      glDrawArrays(GL_TRIANGLES, entity_info.m_base_vertex[j],
-                   entity_info.m_num_vertices[j]);
     }
   }
 }

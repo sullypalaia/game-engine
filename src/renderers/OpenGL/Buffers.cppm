@@ -21,11 +21,11 @@ using uniforms_variant = std::variant<std::reference_wrapper<SolidColor>,
 // at some point add variant support for the buffer data
 
 export struct EntityInfo {
-  std::vector<size_t> m_num_vertices;
-  std::vector<size_t> m_base_vertex;
+  std::vector<int> m_num_vertices;
+  std::vector<int> m_base_vertex;
   std::vector<std::vector<uniforms_variant>> m_uniforms;
 
-  EntityInfo(size_t num_vertices, size_t base_vertex)
+  EntityInfo(int num_vertices, int base_vertex)
       : m_num_vertices({num_vertices}), m_base_vertex({base_vertex}) {}
 
   EntityInfo() = default;
