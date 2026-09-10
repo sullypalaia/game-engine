@@ -1,11 +1,10 @@
 module;
 
 #include <bitset>
-#include <optional>
 #include <vector>
 
 #include "external/glad/glad.h"
-#include "external/glm/glm.hpp"
+#include "external/glm/gtc/matrix_transform.hpp"
 
 #include "entt/entt.hpp"
 
@@ -20,8 +19,12 @@ export struct Position2D;
 export struct Position3D;
 export struct Color;
 
+// uniforms
 export struct Transform;
 export struct SolidColor;
+
+// indices
+export struct Indices;
 
 export enum class ComponentTypes {
   // per-vertex attributes
@@ -34,6 +37,10 @@ export enum class ComponentTypes {
   TRANSFORM, // note that TRANSFORM can also be used as the size of the
              // per-vertex attribute list
   SOLID_COLOR,
+
+  // entities need to provide indices for indexed drawing
+  INDICES,
+
   BIT_COUNT
 };
 
@@ -66,6 +73,10 @@ template <> struct ComponentID<SolidColor> {
   static constexpr int value = static_cast<int>(ComponentTypes::SOLID_COLOR);
 };
 
+template <> struct ComponentID<Indices> {
+  static constexpr int value = static_cast<int>(ComponentTypes::INDICES);
+};
+
 export template <typename T>
 constexpr int ComponentID_v = ComponentID<T>::value;
 
@@ -74,15 +85,15 @@ constexpr int ComponentID_v = ComponentID<T>::value;
 export template <typename T> struct ComponentSize;
 
 template <> struct ComponentSize<Position2D> {
-  static constexpr int value = 2 * sizeof(GLfloat);
+  static constexpr int value = 2 * sizeof(float);
 };
 
 template <> struct ComponentSize<Position3D> {
-  static constexpr int value = 3 * sizeof(GLfloat);
+  static constexpr int value = 3 * sizeof(float);
 };
 
 template <> struct ComponentSize<Color> {
-  static constexpr int value = 4 * sizeof(GLfloat);
+  static constexpr int value = 4 * sizeof(float);
 };
 
 export template <typename T>
@@ -130,15 +141,15 @@ export struct GroupID {
 //-------------user components---------------
 
 export struct Position2D {
-  std::vector<GLfloat> m_data;
+  std::vector<float> m_data;
 };
 
 export struct Position3D {
-  std::vector<GLfloat> m_data;
+  std::vector<float> m_data;
 };
 
 export struct Color {
-  std::vector<GLfloat> m_data;
+  std::vector<float> m_data;
 };
 
 export struct Transform {
@@ -146,7 +157,11 @@ export struct Transform {
 };
 
 export struct SolidColor {
-  GLfloat m_data[4];
+  float m_data[4];
+};
+
+export struct Indices {
+  std::vector<unsigned int> m_data;
 };
 
 //----------------opengl interface--------------

@@ -17,13 +17,14 @@ export struct Group {
   std::bitset<static_cast<size_t>(ComponentTypes::BIT_COUNT)> m_components;
   size_t m_num_entities;
   std::vector<size_t> m_strides;
+  bool m_indexed;
 
   // constructor because its not an aggregate anymore
   Group(size_t id, size_t num_vbos,
         std::bitset<static_cast<size_t>(ComponentTypes::BIT_COUNT)> components,
-        std::vector<size_t> strides)
+        std::vector<size_t> strides, bool indexed)
       : m_id(id), m_num_vbos(num_vbos), m_components(components),
-        m_num_entities(1), m_strides(strides) {}
+        m_num_entities(1), m_strides(strides), m_indexed(indexed) {}
 
   Group(const Group &other) = default;
   Group &operator=(const Group &other) = default;
@@ -107,7 +108,8 @@ export Groups create_groups(entt::registry &registry) {
       components.push_back(mask.m_bits);
 
       // update the groups vector
-      groups.push_back({curr_id, num_vbos, mask.m_bits, std::move(strides)});
+      groups.push_back({curr_id, num_vbos, mask.m_bits, std::move(strides),
+                        registry.all_of<Indices>(entity)});
       registry.emplace<GroupID>(entity, curr_id);
 
       ++curr_id;

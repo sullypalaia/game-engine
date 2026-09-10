@@ -71,11 +71,28 @@ void OpenGLRenderer::m_draw() const {
 
     const EntityInfo &entity_info = m_entity_info[i];
 
+    bool indexed = false;
+    std::vector<const void *> index_offsets;
+    if (m_groups.m_groups[i].m_indexed) {
+      indexed = true;
+
+      // these all need to be casted to const void* before we can draw them
+      for (size_t offset : entity_info.m_base_indices) {
+        index_offsets.push_back(reinterpret_cast<const void *>(offset));
+      }
+    }
+
     // we can multi-draw if there are not any uniforms in the group
     if (entity_info.m_uniforms[0].empty()) {
-      glMultiDrawArrays(GL_TRIANGLES, entity_info.m_base_vertex.data(),
-                        entity_info.m_num_vertices.data(),
-                        entity_info.m_num_vertices.size());
+      if (indexed) {
+        glMultiDrawElements(GL_TRIANGLES, entity_info.m_num_indices.data(),
+                            GL_UNSIGNED_INT, index_offsets.data(),
+                            index_offsets.size());
+      } else {
+        glMultiDrawArrays(GL_TRIANGLES, entity_info.m_base_vertex.data(),
+                          entity_info.m_num_vertices.data(),
+                          entity_info.m_num_vertices.size());
+      }
     } else {
       for (size_t j = 0; j < entity_info.m_num_vertices.size(); ++j) {
 
@@ -106,8 +123,15 @@ void OpenGLRenderer::m_draw() const {
         }
 
         // draw the entity
-        glDrawArrays(GL_TRIANGLES, entity_info.m_base_vertex[j],
-                     entity_info.m_num_vertices[j]);
+        if (indexed) {
+          const void *indices_ptr =
+              reinterpret_cast<const void *>(entity_info.m_base_indices[j]);
+          glDrawElements(GL_TRIANGLES, index_offsets.size(), GL_UNSIGNED_INT,
+                         index_offsets.data());
+        } else {
+          glDrawArrays(GL_TRIANGLES, entity_info.m_base_vertex[j],
+                       entity_info.m_num_vertices[j]);
+        }
       }
     }
   }
