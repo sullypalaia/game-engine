@@ -5,8 +5,6 @@
 
 #include <array>
 
-#include "external/glad/glad.h"
-
 #include "external/GLFW/glfw3.h"
 
 #include "external/glm/glm.hpp"
@@ -20,38 +18,27 @@ import Meshes;
 import ECS;
 import Shaders;
 import Camera;
-import Window;
+import WindowManager;
 import Components;
 import OpenGLRenderer;
 
 int main() {
-  //----------------window setup--------------
-  // glfw setup
-  //
+  // create the window manager and window
+  WindowManager window_manager(true);
+  const size_t window = window_manager.m_create_window(
+      800, 600, "Rendering Example 1", nullptr, nullptr, true);
 
-  // use x11 for renderdoc support
-  glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+  // attach the window to the current context
+  window_manager.m_make_context_current(window);
 
-  glfwInit();
-  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
-
-#ifndef NDEBUG
-  glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
-#endif
-
-  //-------------end window setup--------------
-
-  //-------------begin engine example-----------
-
-  // create window
-  Window window(1920, 1080, "engine", NULL, NULL);
+  // create the ecs
+  ECS ecs;
 
   // camera setup
-  Camera camera(CameraData{glm::ortho(-1.0f * window.m_get_aspect_ratio(),
-                                      window.m_get_aspect_ratio(), -1.0f, 1.0f),
-                           glm::mat4(1.0f)});
+  const float window_aspect_ratio = window_manager.m_get_aspect_ratio(window);
+  Camera camera(CameraData{
+      glm::ortho(-1.0f * window_aspect_ratio, window_aspect_ratio, -1.0f, 1.0f),
+      glm::mat4(1.0f)});
 
   // Filled pear body, built as a triangle fan around the center.
   const std::vector<GLfloat> pear_ring = {
@@ -102,8 +89,6 @@ int main() {
                                                0.20f, 0.47f, 0.00f, 0.32f,
                                                0.20f, 0.47f, 0.11f, 0.29f};
 
-  ECS ecs;
-
   const glm::mat4 pear_transform =
       glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-0.45f, 0.0f, 0.0f)),
                  glm::vec3(0.75f));
@@ -132,39 +117,36 @@ int main() {
                                             1.0f);
   ecs.m_add_component_to_entity<Transform>(apple_leaf, apple_transform);
 
-  {
-    // make sure the destructor is called before the window is destroyed
-    OpenGLRenderer renderer(ecs.m_get_registry());
+  // creates the renderer
+  constexpr GLfloat clear_color[4] = {0.8f, 0.8f, 1.0f, 1.0f};
+  OpenGLRenderer renderer(ecs.m_get_registry(), clear_color);
 
-    constexpr GLfloat clear_color[4]{1.0f, 1.0f, 1.0f, 0.0f};
+  // window loop
+  while (!glfwWindowShouldClose(window_manager.m_get_window(window))) {
+    ecs.m_update_entity_component<Transform>(
+        pear, glm::rotate(pear_transform, static_cast<float>(glfwGetTime()),
+                          glm::vec3(0.0f, 0.0f, 1.0f)));
+    ecs.m_update_entity_component<Transform>(
+        pear_leaf,
+        glm::rotate(pear_transform, static_cast<float>(glfwGetTime()),
+                    glm::vec3(0.0f, 0.0f, 1.0f)));
+    ecs.m_update_entity_component<Transform>(
+        apple,
+        glm::rotate(apple_transform, static_cast<float>(glfwGetTime() * 1.5f),
+                    glm::vec3(0.0f, 0.0f, 1.0f)));
+    ecs.m_update_entity_component<Transform>(
+        apple_leaf,
+        glm::rotate(apple_transform, static_cast<float>(glfwGetTime() * 1.5f),
+                    glm::vec3(0.0f, 0.0f, 1.0f)));
 
-    while (!glfwWindowShouldClose(window.m_get_window())) {
-      glClearBufferfv(GL_COLOR, 0, clear_color);
+    renderer.m_draw();
 
-      ecs.m_update_entity_component<Transform>(
-          pear, glm::rotate(pear_transform, static_cast<float>(glfwGetTime()),
-                            glm::vec3(0.0f, 0.0f, 1.0f)));
-      ecs.m_update_entity_component<Transform>(
-          pear_leaf,
-          glm::rotate(pear_transform, static_cast<float>(glfwGetTime()),
-                      glm::vec3(0.0f, 0.0f, 1.0f)));
-      ecs.m_update_entity_component<Transform>(
-          apple,
-          glm::rotate(apple_transform, static_cast<float>(glfwGetTime() * 1.5f),
-                      glm::vec3(0.0f, 0.0f, 1.0f)));
-      ecs.m_update_entity_component<Transform>(
-          apple_leaf,
-          glm::rotate(apple_transform, static_cast<float>(glfwGetTime() * 1.5f),
-                      glm::vec3(0.0f, 0.0f, 1.0f)));
-
-      renderer.m_draw();
-
-      glfwSwapBuffers(window.m_get_window());
-      glfwPollEvents();
-    }
+    glfwSwapBuffers(window_manager.m_get_window(window));
+    glfwPollEvents();
   }
 
-  window.m_destroy();
+  renderer.m_destroy();
+  window_manager.m_destroy();
 
   //-----------------end engine example----------------
 

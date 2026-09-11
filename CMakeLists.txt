@@ -11,7 +11,7 @@ add_subdirectory(src)
 
 add_executable(engine)
 
-target_sources(engine PRIVATE src/example1.cpp src/glad.c)
+target_sources(engine PRIVATE src/example3.cpp src/glad.c)
 target_include_directories(engine PUBLIC include)
 
 target_link_libraries(engine PRIVATE core_engine)

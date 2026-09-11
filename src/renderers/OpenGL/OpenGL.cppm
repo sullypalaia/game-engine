@@ -1,6 +1,8 @@
 module;
 
+#include <format>
 #include <functional>
+#include <iostream>
 #include <variant>
 #include <vector>
 
@@ -8,7 +10,8 @@ module;
 
 #include "entt/entt.hpp"
 
-#include "external/glm/glm.hpp"
+#include "external/GLFW/glfw3.h"
+
 #include "external/glm/gtc/type_ptr.hpp"
 
 #include "macros.h"
@@ -22,13 +25,18 @@ import ShaderGen;
 import Groups;
 import Buffers;
 
+void debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity,
+                    GLsizei length, const GLchar *message,
+                    const void *userParam);
+
 /**\brief the rendering class for the OpenGL 4.5 API
  */
 export class OpenGLRenderer {
 public:
-  OpenGLRenderer(entt::registry &registry);
+  OpenGLRenderer(entt::registry &registry,
+                 const GLfloat clear_color[4] = m_default_clear_color);
 
-  ~OpenGLRenderer();
+  void m_destroy();
 
   void m_draw() const;
 
@@ -42,13 +50,28 @@ private:
   std::vector<GLuint> m_program_ids;
 
   Groups m_groups;
+
+  const GLfloat *m_clear_color;
+
+  constexpr static GLfloat m_default_clear_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 };
 
 /**\uses Groups.cppm to create groups, creates vaos, uses Buffers.cppm to create
  * buffers, uses ShaderGen.cppm to generate shaders
  */
-OpenGLRenderer::OpenGLRenderer(entt::registry &registry)
-    : m_registry(registry), m_buffers(registry) {
+OpenGLRenderer::OpenGLRenderer(entt::registry &registry,
+                               const GLfloat clear_color[4])
+    : m_registry(registry), m_buffers(registry), m_clear_color(clear_color) {
+
+  gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+
+// set up debugging if it is enabled
+#ifndef NDEBUG
+  glEnable(GL_DEBUG_OUTPUT);
+  glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+  glDebugMessageCallback(debug_callback, nullptr);
+#endif
+
   // create the groups
   m_groups = create_groups(registry);
 
@@ -65,6 +88,9 @@ OpenGLRenderer::OpenGLRenderer(entt::registry &registry)
 }
 
 void OpenGLRenderer::m_draw() const {
+  // clear the color buffer
+  glClearBufferfv(GL_COLOR, 0, m_clear_color);
+
   for (size_t i = 0; i < m_vaos.size(); ++i) {
     glBindVertexArray(m_vaos[i]);
     glUseProgram(m_program_ids[i]);
@@ -137,4 +163,15 @@ void OpenGLRenderer::m_draw() const {
   }
 }
 
-OpenGLRenderer::~OpenGLRenderer() { m_buffers.m_delete_buffers(); }
+void OpenGLRenderer::m_destroy() {
+  m_buffers.m_delete_buffers();
+  glDeleteVertexArrays(m_vaos.size(), m_vaos.data());
+  for (GLuint program_id : m_program_ids)
+    glDeleteProgram(program_id);
+}
+
+void debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity,
+                    GLsizei length, const GLchar *message,
+                    const void *userParam) {
+  std::cerr << std::format("OpenGL Debug Message: {}\n", message);
+}
