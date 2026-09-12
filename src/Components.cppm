@@ -1,6 +1,7 @@
 module;
 
 #include <bitset>
+#include <variant>
 #include <vector>
 
 #include "external/glad/glad.h"
@@ -25,6 +26,10 @@ export struct SolidColor;
 
 // indices
 export struct Indices;
+
+// uniforms variant type for storing the uniforms of an entity in a group
+export using uniforms_variant = std::variant<std::reference_wrapper<SolidColor>,
+                                             std::reference_wrapper<Transform>>;
 
 export enum class ComponentTypes {
   // per-vertex attributes
@@ -125,8 +130,8 @@ template <> struct BufferBinding<Color> {
 export template <typename T>
 constexpr int BufferBinding_v = BufferBinding<T>::value;
 
-/**\brief with a component mask, we can easily create groups by comparing the
- * masks of different components
+/**\brief with a component mask, we can easily create groups by comparing
+ * the masks of different components
  */
 export struct ComponentMask {
   std::bitset<static_cast<size_t>(ComponentTypes::BIT_COUNT)> m_bits;
@@ -157,7 +162,7 @@ export struct Transform {
 };
 
 export struct SolidColor {
-  float m_data[4];
+  std::vector<float> m_data;
 };
 
 export struct Indices {

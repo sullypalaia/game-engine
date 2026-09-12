@@ -16,8 +16,6 @@ import Groups;
 import Components;
 import Shaders;
 
-using uniforms_variant = std::variant<std::reference_wrapper<SolidColor>,
-                                      std::reference_wrapper<Transform>>;
 // at some point add variant support for the buffer data
 
 export struct EntityInfo {
@@ -165,33 +163,33 @@ Buffers::m_create_buffers(const Groups &groups,
     if (bitmask.test(ComponentID_v<Position2D>)) {
       m_add_component_to_buffer<Position2D>(entity, groups, 2, curr_entity);
 
-      if (!indexed) {
-        const int num_vertices =
-            static_cast<int>(m_registry.get<Position2D>(entity).m_data.size()) /
-            2;
+      const int num_vertices =
+          static_cast<int>(m_registry.get<Position2D>(entity).m_data.size()) /
+          2;
 
+      m_entity_info[group_id].m_base_vertex.push_back(
+          m_curr_pos_vbo_offsets[group_id]);
+
+      m_curr_pos_vbo_offsets[group_id] += num_vertices;
+
+      if (!indexed)
         m_entity_info[group_id].m_num_vertices.push_back(num_vertices);
-        m_entity_info[group_id].m_base_vertex.push_back(
-            m_curr_pos_vbo_offsets[group_id]);
-
-        m_curr_pos_vbo_offsets[group_id] += num_vertices;
-      }
     }
 
     if (bitmask.test(ComponentID_v<Position3D>)) {
       m_add_component_to_buffer<Position3D>(entity, groups, 3, curr_entity);
 
-      if (!indexed) {
-        const int num_vertices =
-            static_cast<int>(m_registry.get<Position3D>(entity).m_data.size()) /
-            3;
+      const int num_vertices =
+          static_cast<int>(m_registry.get<Position3D>(entity).m_data.size()) /
+          3;
 
+      m_entity_info[group_id].m_base_vertex.push_back(
+          m_curr_pos_vbo_offsets[group_id]);
+
+      m_curr_pos_vbo_offsets[group_id] += num_vertices;
+
+      if (!indexed)
         m_entity_info[group_id].m_num_vertices.push_back(num_vertices);
-        m_entity_info[group_id].m_base_vertex.push_back(
-            m_curr_pos_vbo_offsets[group_id]);
-
-        m_curr_pos_vbo_offsets[group_id] += num_vertices;
-      }
     }
 
     if (bitmask.test(ComponentID_v<Color>)) {
@@ -323,4 +321,5 @@ void Buffers::m_delete_buffers() {
   for (size_t i = 0; i < m_vbo_ids.size(); ++i) {
     glDeleteBuffers(m_vbo_ids[i].size(), m_vbo_ids[i].data());
   }
+  glDeleteBuffers(m_ebo_ids.size(), m_ebo_ids.data());
 }

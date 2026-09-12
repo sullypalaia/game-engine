@@ -93,7 +93,7 @@ std::vector<GLuint> ShaderGen::m_gen_shaders() {
     if (bitmask.test(ComponentID_v<Position3D>)) {
       vert_shader +=
           std::format("layout (location = {}) in vec3 pos;\n", curr_attrib_loc);
-      pos_ts = "vec4(pos, 1.0f);\n";
+      pos_ts += "vec4(pos, 1.0f);\n";
       set_attrib(m_vaos[group.m_id], curr_attrib_loc,
                  BufferBinding_v<Position3D>, 3, GL_FLOAT, GL_FALSE,
                  relative_offset, 0);
