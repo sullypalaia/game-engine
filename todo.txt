@@ -1,0 +1,2 @@
+-add asset importing
+-use vcpkg for dependencies
