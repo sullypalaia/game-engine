@@ -13,8 +13,7 @@ target_sources(
          engine.graphics.apis.opengl.buffers.cppm
          engine.graphics.apis.opengl.shader_utils.cppm
          engine.graphics.apis.opengl.groups.cppm
-         engine.graphics.apis.opengl.shader_gen.cppm
-         ${PROJECT_SOURCE_DIR}/src/ecs/engine.ecs.components.cppm)
+         engine.graphics.apis.opengl.shader_gen.cppm)
 
 FetchContent_Declare(
   glfw
@@ -41,7 +40,7 @@ FetchContent_MakeAvailable(glm)
 
 target_link_libraries(
   engine_opengl_backend
-  PRIVATE glfw EnTT::EnTT
+  PRIVATE glfw EnTT::EnTT engine_ecs
   PUBLIC glm::glm)
 target_include_directories(engine_opengl_backend
                            PRIVATE ${PROJECT_SOURCE_DIR}/include)

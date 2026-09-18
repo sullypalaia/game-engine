@@ -24,7 +24,6 @@ export module engine.graphics.apis.opengl;
 
 import engine.ecs.components;
 import :shader_utils;
-import engine.ecs.components;
 import :shader_gen;
 import :groups;
 import :buffers;

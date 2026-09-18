@@ -3,3 +3,4 @@ build/*
 docs/*
 shaders/*
 src/CMakeFiles/*
+example_assets/*

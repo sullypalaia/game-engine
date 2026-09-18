@@ -17,13 +17,12 @@ FetchContent_MakeAvailable(glm)
 target_sources(
   engine_scene
   PUBLIC FILE_SET
+         public_modules
+         TYPE
          CXX_MODULES
-         BASE_DIRS
-         ${PROJECT_SOURCE_DIR}
          FILES
          engine.scene.camera.cppm
          engine.scene.prefabs.cppm
-         ${PROJECT_SOURCE_DIR}/src/ecs/engine.ecs.components.cppm
   PRIVATE ${PROJECT_SOURCE_DIR}/src/glad.c)
 
 target_include_directories(engine_scene PRIVATE ${PROJECT_SOURCE_DIR}/include)
