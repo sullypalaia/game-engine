@@ -7,6 +7,7 @@ module;
 #include <cassert>
 #include <cstdlib>
 #include <format>
+#include <functional>
 #include <iostream>
 #include <vector>
 
@@ -27,8 +28,7 @@ public:
    * handler
    */
   const size_t m_create_window(int width, int height, const char *title,
-                               GLFWmonitor *monitor, GLFWwindow *share,
-                               const bool x11 = false);
+                               GLFWmonitor *monitor, GLFWwindow *share);
 
   // get the window if needed
   GLFWwindow *m_get_window(const size_t window) const;
@@ -45,6 +45,8 @@ public:
   // get a camera of a window
   const std::vector<size_t> m_get_cameras(const size_t window) const;
 
+  void m_loop(std::function<void()> update_func);
+
   // destroy all the managed windows
   void m_destroy();
 
@@ -57,7 +59,7 @@ private:
   /**
    * \brief resizes the opengl viewport when the window size changes
    */
-  friend void resize_callback(GLFWwindow *window, int width, int height);
+  inline static void resize_callback(GLFWwindow *window, int width, int height);
 
   size_t m_current_id = 0;
 
@@ -71,7 +73,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
 }
 
 // resize callback
-void resize_callback(GLFWwindow *window, int width, int height) {
+void WindowManager::resize_callback(GLFWwindow *window, int width, int height) {
   glViewport(0, 0, width, height);
 }
 
@@ -96,7 +98,7 @@ WindowManager::WindowManager(const bool x11) {
 const size_t WindowManager::m_create_window(int width, int height,
                                             const char *title,
                                             GLFWmonitor *monitor,
-                                            GLFWwindow *share, const bool x11) {
+                                            GLFWwindow *share) {
   // create the window with the specified parameters
   GLFWwindow *window = glfwCreateWindow(width, height, title, monitor, share);
   if (!window) {
@@ -111,7 +113,7 @@ const size_t WindowManager::m_create_window(int width, int height,
 
   // set the callbacks for the window
   glfwSetKeyCallback(window, key_callback);
-  glfwSetFramebufferSizeCallback(window, resize_callback);
+  glfwSetFramebufferSizeCallback(window, WindowManager::resize_callback);
 
   m_windows.push_back(window);
   m_window_cameras.push_back(std::vector<size_t>());
@@ -133,7 +135,7 @@ void WindowManager::m_make_context_current(const size_t window) {
 
   // set the viewport
   int width, height;
-  glfwGetWindowSize(curr_window, &width, &height);
+  glfwGetFramebufferSize(curr_window, &width, &height);
   glViewport(0, 0, width, height);
 }
 
@@ -143,7 +145,7 @@ GLFWwindow *WindowManager::m_get_window(const size_t window) const {
 
 float WindowManager::m_get_aspect_ratio(const size_t window) const {
   int width, height;
-  glfwGetWindowSize(m_windows[window], &width, &height);
+  glfwGetFramebufferSize(m_windows[window], &width, &height);
 
   return static_cast<float>(width) / static_cast<float>(height);
 }
@@ -155,6 +157,17 @@ void WindowManager::m_attach_camera(const size_t window, const size_t camera) {
 const std::vector<size_t>
 WindowManager::m_get_cameras(const size_t window) const {
   return m_window_cameras[window];
+}
+
+void WindowManager::m_loop(std::function<void()> update_func) {
+  if (!update_func)
+    return;
+
+  while (!glfwWindowShouldClose(m_windows[0])) {
+    glfwPollEvents();
+    update_func();
+    glfwSwapBuffers(m_windows[0]);
+  }
 }
 
 void WindowManager::m_destroy() {

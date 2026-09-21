@@ -2,3 +2,4 @@
 -use vcpkg for dependencies
 -stop using entt::entity for the entity type exposed to users
 -fix the window and camera managers
+-make the window and camera managers singletons

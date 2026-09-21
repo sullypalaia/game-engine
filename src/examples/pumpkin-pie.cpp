@@ -1,3 +1,4 @@
+#include <functional>
 #include <vector>
 
 #include "../src/scene/utils/definitions.h"
@@ -15,9 +16,9 @@ import engine.assets.importer;
 import engine.scene.camera_manager;
 
 int main() {
-  WindowManager window_manager(true);
+  WindowManager window_manager(false);
   const size_t window = window_manager.m_create_window(
-      1920, 1080, "pumpkin pie", nullptr, nullptr, true);
+      1920, 1080, "pumpkin pie", nullptr, nullptr);
 
   window_manager.m_make_context_current(window);
 
@@ -25,11 +26,10 @@ int main() {
 
   const float clear_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
-  // with first person camera:
   CameraManager camera_manager(window_manager);
   const size_t camera = camera_manager.m_create_first_person_camera(
-      glm::vec3(0.0f, 0.0f, 1.0f), glm::mat4(1.0f), 1.0f, 45.0f, 0.1f, 100.0f,
-      window);
+      glm::vec3(0.0f, 0.0f, 1.0f), -90.0f, 0.0f, 0.0f, 0.1f, 1.0f, 45.0f, 0.1f,
+      100.0f, window);
 
   Importer importer;
   const std::vector<entt::entity> entities =
@@ -37,7 +37,6 @@ int main() {
 
   int count = 0;
   for (const auto &entity : entities) {
-    /*
     if (count % 2 == 0) {
       ecs.m_add_component_to_entity<SolidColor>(
           entity, std::move(std::vector<float>{1.0f, 0.0f, 0.0f, 1.0f}));
@@ -45,24 +44,18 @@ int main() {
       ecs.m_add_component_to_entity<SolidColor>(
           entity, std::move(std::vector<float>{0.0f, 1.0f, 0.0f, 1.0f}));
     }
-    */
-
-    ecs.m_add_component_to_entity<SolidColor>(
-        entity, std::move(std::vector<float>{1.0f, 0.0f, 0.0f, 1.0f}));
 
     ++count;
   }
 
   OpenGLRenderer renderer(ecs.m_get_registry(), clear_color);
 
-  while (!glfwWindowShouldClose(window_manager.m_get_window(window))) {
+  std::function<void()> update_func = [&]() {
     camera_manager.m_update();
-
     renderer.m_draw();
+  };
 
-    glfwSwapBuffers(window_manager.m_get_window(window));
-    glfwPollEvents();
-  }
+  window_manager.m_loop(update_func);
 
   camera_manager.m_destroy();
   renderer.m_destroy();
