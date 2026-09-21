@@ -1,3 +1,4 @@
--add asset importing
+-fix asset importing
 -use vcpkg for dependencies
 -stop using entt::entity for the entity type exposed to users
+-fix the window and camera managers

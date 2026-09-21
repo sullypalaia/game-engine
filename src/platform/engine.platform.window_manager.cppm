@@ -39,18 +39,27 @@ public:
   // attach the window to the current context
   void m_make_context_current(const size_t window);
 
+  // attach a camera to the window
+  void m_attach_camera(const size_t window, const size_t camera);
+
+  // get a camera of a window
+  const std::vector<size_t> m_get_cameras(const size_t window) const;
+
   // destroy all the managed windows
   void m_destroy();
 
 private:
+  // each window has these properties:
+  std::vector<size_t> m_window_ids;
   std::vector<GLFWwindow *> m_windows;
+  std::vector<std::vector<size_t>> m_window_cameras;
 
   /**
    * \brief resizes the opengl viewport when the window size changes
    */
   friend void resize_callback(GLFWwindow *window, int width, int height);
 
-  inline static size_t current_id = 0;
+  size_t m_current_id = 0;
 
   inline static bool glad_initialized = false;
 };
@@ -96,17 +105,18 @@ const size_t WindowManager::m_create_window(int width, int height,
     std::exit(-1);
   }
 
-  // set the user pointer to the windo
-  glfwSetWindowUserPointer(window, m_windows.data());
+  // set the user pointer to the window
+  m_window_ids.push_back(m_current_id);
+  glfwSetWindowUserPointer(window, &m_window_ids[m_current_id]);
 
   // set the callbacks for the window
   glfwSetKeyCallback(window, key_callback);
   glfwSetFramebufferSizeCallback(window, resize_callback);
 
-  // add the new window to the vector, return the current id, and increment the
-  // current id for the next window
   m_windows.push_back(window);
-  return current_id++;
+  m_window_cameras.push_back(std::vector<size_t>());
+
+  return m_current_id++;
 }
 
 /**\brief makes the opengl context of the specified window current, and sets the
@@ -136,6 +146,15 @@ float WindowManager::m_get_aspect_ratio(const size_t window) const {
   glfwGetWindowSize(m_windows[window], &width, &height);
 
   return static_cast<float>(width) / static_cast<float>(height);
+}
+
+void WindowManager::m_attach_camera(const size_t window, const size_t camera) {
+  m_window_cameras[window].push_back(camera);
+}
+
+const std::vector<size_t>
+WindowManager::m_get_cameras(const size_t window) const {
+  return m_window_cameras[window];
 }
 
 void WindowManager::m_destroy() {

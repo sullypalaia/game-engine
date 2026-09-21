@@ -20,9 +20,12 @@ target_sources(
          public_modules
          TYPE
          CXX_MODULES
+         BASE_DIRS
+         ${PROJECT_SOURCE_DIR}
          FILES
-         engine.scene.camera.cppm
+         engine.scene.camera_manager.cppm
          engine.scene.prefabs.cppm
+         ${PROJECT_SOURCE_DIR}/src/platform/engine.platform.window_manager.cppm
   PRIVATE ${PROJECT_SOURCE_DIR}/src/glad.c)
 
 target_include_directories(engine_scene PRIVATE ${PROJECT_SOURCE_DIR}/include)
